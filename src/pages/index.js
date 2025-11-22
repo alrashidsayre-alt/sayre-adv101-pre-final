@@ -1,78 +1,165 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+'use client';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { useState, useEffect } from 'react';
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export default function TodoApp() {
+  const [todos, setTodos] = useState([]);
+  const [filter, setFilter] = useState('all'); // all, todo, completed
+  const [searchTerm, setSearchTerm] = useState('');
+  const [newTodo, setNewTodo] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
 
-export default function Home() {
+  // Load from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('todos');
+    if (saved) setTodos(JSON.parse(saved));
+  }, []);
+
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem('todos', JSON.stringify(todos));
+  }, [todos]);
+
+  const addTodo = (e) => {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+
+    const todo = {
+      id: Date.now().toString(),
+      title: newTodo.trim(),
+      completed: false,
+    };
+
+    setTodos([todo, ...todos]);
+    setNewTodo('');
+  };
+
+  const toggleComplete = (id) => {
+    setTodos(todos.map(t =>
+      t.id === id ? { ...t, completed: !t.completed } : t
+    ));
+  };
+
+  const deleteTodo = (id) => {
+    if (confirm('Delete this task permanently?')) {
+      setTodos(todos.filter(t => t.id !== id));
+    }
+  };
+
+  const startEdit = (id, title) => {
+    setEditingId(id);
+    setEditText(title);
+  };
+
+  const saveEdit = () => {
+    if (!editText.trim()) return;
+    setTodos(todos.map(t =>
+      t.id === editingId ? { ...t, title: editText.trim() } : t
+    ));
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  // Filter & Search
+  const filtered = todos
+    .filter(todo => {
+      if (filter === 'todo') return !todo.completed;
+      if (filter === 'completed') return todo.completed;
+      return true;
+    })
+    .filter(todo =>
+      todo.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="container">
+      <header>
+        <h1>My Tasks</h1>
+        <p>{todos.filter(t => !t.completed).length} pending, {todos.filter(t => t.completed).length} done</p>
+      </header>
+
+      <form onSubmit={addTodo} className="input-group">
+        <input
+          type="text"
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          placeholder="What needs to be done?"
+          autoFocus
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <button type="submit">Add</button>
+      </form>
+
+      <div className="tabs">
+        <button className={filter === 'all' ? 'tab active' : 'tab'} onClick={() => setFilter('all')}>
+          All
+        </button>
+        <button className={filter === 'todo' ? 'tab active' : 'tab'} onClick={() => setFilter('todo')}>
+          To Do
+        </button>
+        <button className={filter === 'completed' ? 'tab active' : 'tab'} onClick={() => setFilter('completed')}>
+          Completed
+        </button>
+      </div>
+
+      <input
+        type="text"
+        className="search-box"
+        placeholder="Search tasks..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
+      <ul className="todo-list">
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            {searchTerm || filter !== 'all' ? 'No tasks found' : 'No tasks yet. Add one!'}
+          </div>
+        ) : (
+          filtered.map(todo => (
+            <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+              <input
+                type="checkbox"
+                checked={todo.completed}
+                onChange={() => toggleComplete(todo.id)}
+                className="todo-checkbox"
+              />
+
+              {editingId === todo.id ? (
+                <input
+                  type="text"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                  autoFocus
+                  className="todo-title"
+                />
+              ) : (
+                <span className="todo-title">{todo.title}</span>
+              )}
+
+              <div className="actions">
+                {editingId === todo.id ? (
+                  <>
+                    <button onClick={saveEdit} className="save-btn">Save</button>
+                    <button onClick={cancelEdit} className="cancel-btn">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => startEdit(todo.id, todo.title)} className="edit-btn">Edit</button>
+                    <button onClick={() => deleteTodo(todo.id)} className="delete-btn">Delete</button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
     </div>
   );
 }
